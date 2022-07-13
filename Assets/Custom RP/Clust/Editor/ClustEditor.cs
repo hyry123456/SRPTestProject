@@ -478,7 +478,6 @@ namespace CustomRP.Clust
                         DestroyImmediate(gameObject.transform.GetChild(0).gameObject);
                     }
                 }
-
             }
         }
     }

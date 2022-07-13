@@ -33,9 +33,7 @@ namespace Common.ParticleSystem
             mesh.vertices = poss;
             mesh.triangles = tris;
 
-
             meshFilter.mesh = mesh;
-
         }
     }
 }

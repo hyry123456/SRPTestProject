@@ -243,8 +243,8 @@ namespace Common.ParticleSystem
         private void OneRayHit(RaycastHit raycastHit, float dis, float moveTime)
         {
             SetOneRayPoint(raycastHit, dis, moveTime, circulatePos);
-            //SetOneRayPoint(raycastHit, dis, moveTime, circulatePos + 1);
-            //SetOneRayPoint(raycastHit, dis, moveTime, circulatePos + 2);
+            SetOneRayPoint(raycastHit, dis, moveTime, circulatePos + 1);
+            SetOneRayPoint(raycastHit, dis, moveTime, circulatePos + 2);
             meshFilter.sharedMesh.SetTangents(tangents);
             meshFilter.sharedMesh.SetColors(colors);
             meshFilter.sharedMesh.SetUVs(0, uv0);
@@ -254,8 +254,8 @@ namespace Common.ParticleSystem
             meshFilter.sharedMesh.SetUVs(4, uv4);
             meshFilter.sharedMesh.SetUVs(6, uv6);
             meshFilter.sharedMesh.SetNormals(normals);
-            //circulatePos += 3;
-            circulatePos += 1;
+            circulatePos += 3;
+            //circulatePos += 1;
         }
 
         private void SetOneRayPoint(RaycastHit raycastHit, float dis, float moveTime, int index)
@@ -297,9 +297,10 @@ namespace Common.ParticleSystem
         private void TwoRayHit(RaycastHit raycastHit, Vector3 upPos, float dis, Vector3 fowardDir, float moveTime)
         {
             SetTwoRayPoint(raycastHit, upPos, dis, fowardDir, moveTime, circulatePos);
-            //SetTwoRayPoint(raycastHit, upPos, dis, fowardDir, moveTime, circulatePos + 1);
-            //SetTwoRayPoint(raycastHit, upPos, dis, fowardDir, moveTime, circulatePos + 2);
-            circulatePos += 1;
+            SetTwoRayPoint(raycastHit, upPos, dis, fowardDir, moveTime, circulatePos + 1);
+            SetTwoRayPoint(raycastHit, upPos, dis, fowardDir, moveTime, circulatePos + 2);
+            //circulatePos += 1;
+            circulatePos += 3;
             mesh.SetColors(colors);
             mesh.SetUVs(0, uv0);
             mesh.SetUVs(1, uv1);

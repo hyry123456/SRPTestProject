@@ -64,11 +64,11 @@ float3 GetWaterColor(Varyings input, float waterDepth, float3 waterNormal, float
 	float3 worldPos = GetWorldPos(waterDepth, input.screenUV);
 
 	float3 viewDirection = normalize( _WorldSpaceCameraPos - worldPos );
-	float3 reflectDir = normalize(-viewDirection + 2 * waterNormal);
-
+	float3 reflectDir = normalize(-viewDirection + 2 * waterNormal);	//反射方向
+	//反射颜色
 	float3 specular = SAMPLE_TEXTURECUBE_LOD( _WaterReflectCube, sampler_WaterReflectCube, reflectDir, 0 ).rgb;
-	float2 ofssetUV = reflect(-viewDirection, waterNormal).xy * waterWidth * 0.1 + input.screenUV;
-
+	float2 ofssetUV = (-viewDirection - 0.2 * waterNormal).xy * waterWidth * 0.2 + input.screenUV;
+	//折射颜色
 	float3 refrColor = SAMPLE_TEXTURE2D_LOD(_PostFxEffectSource, sampler_linear_clamp, ofssetUV, 0).rgb;
 	refrColor = lerp(refrColor * _WaterColor.rgb, refrColor, transLight);
 	
@@ -89,16 +89,12 @@ float4 WaterFragment (Varyings input) : SV_TARGET{
 	float waterDepth = SAMPLE_DEPTH_TEXTURE_LOD(_ParticleWaterDepthTex, sampler_point_clamp, input.screenUV, 0);
 
 	//检查是否需要进行液体模拟
-	if(currentDepth > waterDepth || waterDepth == 0)       //深度检测
+	if(currentDepth >= waterDepth)       //深度检测
 		return float4(currentColor, 1);
 
-	//厚度检测
-	if(waterWidth < 0.01)
-		return float4(currentColor, 1);
+	float a = pow(2.71, -0.5 * waterWidth);
 
-	float a = max(pow(2.71, -0.5 * waterWidth), 0);
-
-	float3 color =GetWaterColor(input, waterDepth, waterNormal, waterWidth, a);
+	float3 color = GetWaterColor(input, waterDepth, waterNormal, waterWidth, a);
 
 	return float4(color, 1);
 }
@@ -153,6 +149,7 @@ float CompareDepth(float depth1, float depth2)
 	return smoothstep(_BilaterFilterFactor, 1.0, 1.0 - abs(depth1 - depth2));
 }
 
+//深度图的处理不太一样，因此需要用一个单独的Pass来处理
 float BilateralFilterDepthFragment(Varyings input) : SV_DEPTH{
 	float2 delta = _PostFxEffectSource_TexelSize.xy * _BlurRadius.xy;
 
