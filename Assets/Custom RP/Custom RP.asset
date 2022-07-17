@@ -26,7 +26,7 @@ MonoBehaviour:
     maxDistance: 500
     distanceFade: 0.1
     directional:
-      atlasSize: 4096
+      atlasSize: 2048
       filter: 2
       cascadeCount: 4
       cascadeRatio1: 0.01
@@ -36,8 +36,8 @@ MonoBehaviour:
       cascadeBlend: 1
     other:
       atlasSize: 1024
-      filter: 2
-  postFXSettings: {fileID: 11400000, guid: 2e703c10311224205856a15ca4e1b1c0, type: 2}
-  postFXEffectSettings: {fileID: 11400000, guid: 47db008c37e30124fb465f8b716c0c37, type: 2}
+      filter: 3
+  postFXSettings: {fileID: 0}
+  postFXEffectSettings: {fileID: 0}
   colorLUTResolution: 32
   cameraRendererShader: {fileID: 4800000, guid: 8ddf7a135e9224bf68caaacdb35c85f0, type: 3}

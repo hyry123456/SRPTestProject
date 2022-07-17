@@ -47,7 +47,6 @@ Shader "Custom RP/CustomPR_Particle"
 
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
-            Cull Off
 
             HLSLPROGRAM
             #pragma target 4.6

@@ -44,11 +44,9 @@ CBUFFER_END
 
 struct FragInput{
     float4 uv0 : TEXCOORD0;
-
     #ifdef _ANIMATE_UV
         float4 uv1 : TEXCOORD1;
     #endif
-
     float4 pos : SV_POSITION;
     float time : TEXCOORD2;
 };

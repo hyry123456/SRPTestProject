@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.Rendering;
-using CustomRP.Clust;
+using CustomRP.GPUPipeline;
 
 /// <summary>/// 单个摄像级的渲染类，对该摄像机进行渲染	/// </summary>
 public partial class CameraRenderer {
@@ -151,15 +151,15 @@ public partial class CameraRenderer {
 		//本摄像机渲染准备
 		Setup();
 
-        ClustDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Simple, camera);
-
-        //绘制所有可见图元
-        DrawVisibleGeometry(
+		//绘制所有可见图元
+		DrawVisibleGeometry(
 			useDynamicBatching, useGPUInstancing, useLightsPerObject,
 			cameraSettings.renderingLayerMask
 		);
 
-        DrawUnsupportedShaders();   //绘制不支持的纹理
+		GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Simple, camera);
+
+		DrawUnsupportedShaders();   //绘制不支持的纹理
 
         if (postFXEffect.IsActive)
         {

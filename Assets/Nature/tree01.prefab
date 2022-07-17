@@ -116,7 +116,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: Optimized Bark Material
   m_Shader: {fileID: 4800000, guid: 3fed303a598348c47bb5175b4b802abf, type: 3}
-  m_ShaderKeywords: _MASK_MAP _NORMAL_MAP _RECEIVE_SHADOWS _SHADOWS_ON _USE_BSDF
+  m_ShaderKeywords: _MASK_MAP _NORMAL_MAP _RECEIVE_SHADOWS _SHADOWS_CLIP _USE_BSDF
   m_LightmapFlags: 5
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -151,7 +151,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskMap:
-        m_Texture: {fileID: 2800000, guid: ae561c4b1e740354fb9a2b30b2ff4dac, type: 3}
+        m_Texture: {fileID: 2800000, guid: 4561489a3ef42ad4eae5f6167fc00c76, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _NormalMap:
@@ -175,21 +175,21 @@ Material:
     - _Fresnel: 1
     - _ILTPower: 1
     - _MaskMapToggle: 1
-    - _Metallic: 0
+    - _Metallic: 1
     - _NormalMapToggle: 1
     - _NormalScale: 1
-    - _Occlusion: 0.597
+    - _Occlusion: 1
     - _PremulAlpha: 0
     - _ReceiveShadows: 1
     - _ShadowStrength: 1
-    - _Shadows: 0
-    - _Smoothness: 0.266
+    - _Shadows: 1
+    - _Smoothness: 0
     - _SquashAmount: 1
     - _SrcBlend: 1
     - _TranslucencyViewDependency: 1
     - _UseBSDF: 1
     - _WidthControl: 1
-    - _Wrap: 0.492
+    - _Wrap: 1
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
@@ -290,7 +290,7 @@ Material:
     - _TranslucencyViewDependency: 0.7
     - _UseBSDF: 1
     - _WidthControl: 1
-    - _Wrap: 0
+    - _Wrap: 1
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}

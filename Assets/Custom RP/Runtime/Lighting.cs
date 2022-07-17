@@ -1,7 +1,7 @@
 ﻿using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
-using CustomRP.Clust;
+
 
 /// <summary>///  注册以及传递灯光数据的类	/// </summary>
 public class Lighting {

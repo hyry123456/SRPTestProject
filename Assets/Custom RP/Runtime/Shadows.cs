@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.Rendering;
-using CustomRP.Clust;
+using CustomRP.GPUPipeline;
 
 /// <summary>/// 阴影数据准备以及传递类/// </summary>
 public class Shadows {
@@ -299,7 +299,7 @@ public class Shadows {
 			buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
 			buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
 
-			ClustDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Shadow, projectionMatrix * viewMatrix);
+			GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Shadow, projectionMatrix * viewMatrix);
 
 			ExecuteBuffer();
 			context.DrawShadows(ref shadowSettings);
@@ -384,7 +384,7 @@ public class Shadows {
 		buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
 		buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
 
-		ClustDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Shadow, projectionMatrix * viewMatrix);
+		GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Shadow, projectionMatrix * viewMatrix);
 
 		ExecuteBuffer();
 		context.DrawShadows(ref shadowSettings);
@@ -424,7 +424,7 @@ public class Shadows {
 			buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
 			buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
 
-			ClustDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Shadow, projectionMatrix * viewMatrix);
+			GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Shadow, projectionMatrix * viewMatrix);
 
 			ExecuteBuffer();
 			context.DrawShadows(ref shadowSettings);

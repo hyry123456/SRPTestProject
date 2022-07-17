@@ -1,0 +1,146 @@
+#pragma kernel ParticleReady
+
+struct ParticleGroupData {
+    float3 beginPos;
+    float lifeTime;
+};
+struct ParticleData {
+    float4 random;          //xyz是随机数，w是存活时间
+    int2 index;
+    float3 worldPos;
+    float4 uvTransData;     //uv动画需要的数据
+    float interpolation;    //插值需要的数据
+    float4 color;           //颜色值，包含透明度
+    float size;             //粒子大小
+};
+struct AnimateUVData {
+    float4 uvData;			//uv偏移时需要的数据
+    float interpolation;
+};
+
+RWStructuredBuffer<ParticleData> _ParticleBuffer;         //输入的buffer
+StructuredBuffer<ParticleGroupData> _ParticleGroupBuffer;       //每组统一的数据
+
+int _GroupData;     //粒子数组数据
+int _ArriveIndex;   //到达编号
+float3 _SpeedStart;
+float3 _SpeedEnd;
+float4 _Time;       //x=time, y=deltaTime
+
+int2 _UVCount;				//x是row，y是column
+
+//每个都只计算6组
+#define _COUNT 6
+
+float4 _Colors[_COUNT];  //颜色计算用的数据
+float4 _Alphas[_COUNT];  //透明度计算用的数据
+float4 _Sizes[_COUNT];  //大小
+
+AnimateUVData AnimateUV(float time_01) {
+    float sumTime = _UVCount.x * _UVCount.y;
+    float midTime = time_01 * sumTime;
+
+    float bottomTime = floor(midTime);
+    float topTime = bottomTime + 1.0;
+    float interpolation = (midTime - bottomTime) / (topTime - bottomTime);
+    float bottomRow = floor(bottomTime / _UVCount.x);
+    float bottomColumn = floor(bottomTime - bottomRow * _UVCount.y);
+    float topRow = floor(topTime / _UVCount.x);
+    float topColumn = floor(topTime - topRow * _UVCount.y);
+
+    AnimateUVData animateUV;
+    animateUV.uvData = float4(bottomColumn, -bottomRow, topColumn, -topRow);
+    animateUV.interpolation = interpolation;
+    return animateUV;
+}
+
+//根据时间获取颜色
+float3 LoadColor(float time_01) {
+    for (int i = 1; i < _COUNT; i++) {
+        if (time_01 <= _Colors[i].w) {
+            float radio = smoothstep(_Colors[i - 1].w, _Colors[i].w, time_01);
+            return lerp(_Colors[i - 1].xyz, _Colors[i].xyz, radio);
+        }
+    }
+    return 0;
+}
+
+float LoadAlpha(float time_01) {
+    for (int i = 1; i < 5; i++) {
+        if (time_01 <= _Alphas[i].y) {
+            float radio = smoothstep(_Alphas[i - 1].y, _Alphas[i].y, time_01);
+            return lerp(_Alphas[i - 1].x, _Alphas[i].x, radio);
+        }
+    }
+    return 1;
+}
+
+//时间控制函数，用来读取Curve中的值
+float LoadSize(float time_01) {
+    //有数据才循环
+    for (int i = 1; i < _COUNT; i++) {
+        //找到在范围中的
+        if (time_01 <= _Sizes[i].x) {
+            //Unity的Curve的曲线本质上是一个三次多项式插值，公式为：y = ax^3 + bx^2 + cx +d
+            float a = (_Sizes[i - 1].w + _Sizes[i].z) * (_Sizes[i].x - _Sizes[i - 1].x)
+                - 2 * (_Sizes[i].y - _Sizes[i - 1].y);
+            float b = (-2 * _Sizes[i - 1].w - _Sizes[i].z) *
+                (_Sizes[i].x - _Sizes[i - 1].x) + 3 * (_Sizes[i].y - _Sizes[i - 1].y);
+            float c = _Sizes[i - 1].w * (_Sizes[i].x - _Sizes[i - 1].x);
+            float d = _Sizes[i - 1].y;
+
+            float trueTime = (time_01 - _Sizes[i - 1].x) / (_Sizes[i].x - _Sizes[i - 1].x);
+            return a * pow(trueTime, 3) + b * pow(trueTime, 2) + c * trueTime + d;
+
+        }
+    }
+    return 0;
+}
+
+[numthreads(64,1,1)]
+void ParticleReady(int3 gid : SV_GroupID, int index : SV_GroupIndex)
+{
+    //组内编号
+    int groupIndex = gid.y * 64 + index;
+    //总编号
+    int allIndex = gid.x * _GroupData + groupIndex;
+    if (groupIndex >= _GroupData ) return;
+
+    ParticleData o = _ParticleBuffer[allIndex];
+    ParticleGroupData group = _ParticleGroupBuffer[gid.x];
+
+    //未到运行状态就标记死亡
+    if (o.index.x > _ArriveIndex) {
+        o.index.y = -1;
+        _ParticleBuffer[allIndex] = o;    //表示不显示
+        return;
+    }
+    //到达运行时初始化，注意，第一轮初始化是在CPU中赋值的
+    if (o.index.x == _ArriveIndex) {
+        o.worldPos = group.beginPos;
+        o.random.w = 0;
+    }
+
+    float3 dir = lerp(_SpeedStart.xyz, _SpeedEnd.xyz, o.random.xyz);
+    o.worldPos += dir * _Time.y;
+    o.random.w += _Time.y;
+
+    //超过运行时间，就让其死亡
+    if (o.random.w > group.lifeTime) {
+        o.index = int2(o.index.x + _GroupData, -1);
+        _ParticleBuffer[allIndex] = o;    //表示不显示
+        return;
+    }
+    else
+        o.index.y = 1;  //运行
+
+
+    float time_01 = o.random.w / group.lifeTime;
+    AnimateUVData uvData = AnimateUV(time_01);
+    o.uvTransData = uvData.uvData;
+    o.interpolation = uvData.interpolation;
+    o.color = float4(LoadColor(time_01), LoadAlpha(time_01));
+    o.size = LoadSize(time_01);
+
+    _ParticleBuffer[allIndex] = o;
+}

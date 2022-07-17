@@ -54,7 +54,6 @@ namespace Common.ParticleSystem
             setMat.SetInt("_MovePointCount", widthCurve.length);
             setMat.SetVectorArray("_MovePointArray", vector4);
 
-
             //设置大小
             vector4 = new Vector4[sizeCurve.length];
             for (int i = 0; i < sizeCurve.length; i++)
@@ -63,14 +62,11 @@ namespace Common.ParticleSystem
                     sizeCurve.keys[i].inTangent, sizeCurve.keys[i].outTangent);
             }
 
-
             if (CurveSize)
                 setMat.EnableKeyword("_CURVE_SIZE");
             else setMat.DisableKeyword("_CURVE_SIZE");
             setMat.SetInt("_SizePointCount", sizeCurve.length);
             setMat.SetVectorArray("_SizePointArray", vector4);
-
-
 
             //设置透明度
             vector4 = new Vector4[alphaCurve.length];
