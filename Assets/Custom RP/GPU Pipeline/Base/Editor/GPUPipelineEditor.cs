@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
-using static GPUPipelineSaveStruct;
+using static CustomRP.GPUPipeline.Edit.GPUPipelineSaveStruct;
 
-namespace CustomRP.GPUPipeline
+namespace CustomRP.GPUPipeline.Edit
 {
     public class GPUPipelineEditor : Editor
     {
         static string FindTagName = "GPU Pipline";
-        private static List<Triangle> GetAllTriangles(Mesh mesh, GPUPipelineSaveStruct clustSaveStruct)
+        private static List<TriangleEdit> GetAllTriangles(Mesh mesh, GPUPipelineSaveStruct clustSaveStruct)
         {
-            List<Triangle> triangles = new List<Triangle>();
+            List<TriangleEdit> triangles = new List<TriangleEdit>();
             if (mesh == null)
             {
                 Debug.Log("mesh is null");
@@ -25,9 +25,10 @@ namespace CustomRP.GPUPipeline
             clustSaveStruct.tangesArray = mesh.tangents;
             int[] tris = mesh.triangles;
 
+
             for (int i = 0; i < tris.Length; i += 3)
             {
-                Triangle triangle = new Triangle();
+                TriangleEdit triangle = new TriangleEdit();
                 triangle.points = new int[3];
                 triangle.points[0] = tris[i];
                 triangle.points[1] = tris[i + 1];
@@ -43,16 +44,16 @@ namespace CustomRP.GPUPipeline
         /// 将相邻的三角面转化为四遍形面
         /// </summary>
         /// <param name="triangles">所有的三角形数据</param>
-        private static List<Quardrangle> GetAllQuard(List<Triangle> triangles)
+        private static List<Quardrangle> GetAllQuard(List<TriangleEdit> triangles)
         {
-            Triangle[] trianglesArray = triangles.ToArray();
+            TriangleEdit[] trianglesArray = triangles.ToArray();
             List<Quardrangle> intersectQuard = new List<Quardrangle>();
             for (int i = 0; i < trianglesArray.Length; i++)
             {
                 if (trianglesArray[i].isUse) continue;
-                for (int j = 0; j < trianglesArray.Length && !trianglesArray[i].isUse; j++)
+                for (int j = 0; j < trianglesArray.Length; j++)
                 {
-                    if (trianglesArray[j].isUse) continue;
+                    if (trianglesArray[j].isUse || i == j) continue;
                     if (trianglesArray[i].IsBorderUpon(trianglesArray[j]))
                     {
                         trianglesArray[i].isUse = true;
@@ -66,7 +67,6 @@ namespace CustomRP.GPUPipeline
                     }
                 }
             }
-
             for (int i = 0; i < trianglesArray.Length; i++)
             {
                 if (!trianglesArray[i].isUse)
@@ -81,20 +81,11 @@ namespace CustomRP.GPUPipeline
             return intersectQuard;
         }
 
-
         private static void ClipQuardrangleMeshByClust(List<Quardrangle> quard, 
             GameObject father, GPUPipelineSaveStruct clustSaveStruct)
         {
             Quardrangle[] quardrangles1 = quard.ToArray();
 
-            //检查用的四边形分割
-            //for (int i = 0; i < quard.Count; i++)
-            //{
-            //    GameObject go = new GameObject(count.ToString());
-            //    go.transform.parent = father.transform;
-            //    AddMeshTemp(go, quard[i]);
-            //    count++;
-            //}
             int count = 0;
 
             for (int i = 0; i < quardrangles1.Length; i++)
@@ -129,7 +120,7 @@ namespace CustomRP.GPUPipeline
                 foreach (KeyValuePair<float, int> index in pair)
                 {
                     if (quardrangles1[index.Value].isUse) continue;
-                    if (intersectQuard.Count == 16) break;
+                    if (intersectQuard.Count == 12) break;
                     intersectQuard.Add(quardrangles1[index.Value]);
                     quardrangles1[index.Value].isUse = true;
                 }
@@ -141,37 +132,27 @@ namespace CustomRP.GPUPipeline
                 gameObject.transform.position = father.transform.position;
                 gameObject.transform.localScale = new Vector3(1, 1, 1);     //大小设置为和父亲一样即可
                 gameObject.transform.rotation = father.transform.rotation;
-                //Debug.Log(intersectQuard.Count + "Intet Count");
                 AddMesh(gameObject, intersectQuard, clustSaveStruct);
                 intersectQuard.Clear();
             }
         }
 
-        private static bool CheckUpon(List<Quardrangle> intersectQuard, Quardrangle quardrangle)
-        {
-            for (int i = 0; i < intersectQuard.Count; i++)
-            {
-                if (quardrangle.IsBorderUpon(intersectQuard[i]))
-                    return true;
-            }
-            return false;
-        }
 
         private static void AddMesh(GameObject game, List<Quardrangle> quardrangles, 
             GPUPipelineSaveStruct clustSaveStruct)
         {
-            int count = 16 - quardrangles.Count;
+            int count = 12 - quardrangles.Count;
             for (int i = 0; i < count; i++)
             {
                 quardrangles.Add(quardrangles[quardrangles.Count - 1]);
             }
             Mesh mesh = new Mesh();
-            Vector3[] vecs = new Vector3[64];
-            Vector3[] normals = new Vector3[64];
-            Vector4[] tangles = new Vector4[64];
-            Vector2[] uv0s = new Vector2[64];
+            Vector3[] vecs = new Vector3[48];
+            Vector3[] normals = new Vector3[48];
+            Vector4[] tangles = new Vector4[48];
+            Vector2[] uv0s = new Vector2[48];
 
-            int[] tris = new int[96];
+            int[] tris = new int[72];
             for (int i = 0; i < quardrangles.Count; i++)
             {
                 QuardrangleMeshData quardrangleMeshData = 
@@ -196,12 +177,12 @@ namespace CustomRP.GPUPipeline
                 uv0s[i * 4 + 2] = quardrangleMeshData.uv0s[2];
                 uv0s[i * 4 + 3] = quardrangleMeshData.uv0s[3];
 
-                tris[i * 6 + 0] = i * 4 + quardrangleMeshData.tris[0];
-                tris[i * 6 + 1] = i * 4 + quardrangleMeshData.tris[1];
-                tris[i * 6 + 2] = i * 4 + quardrangleMeshData.tris[2];
-                tris[i * 6 + 3] = i * 4 + quardrangleMeshData.tris[3];
-                tris[i * 6 + 4] = i * 4 + quardrangleMeshData.tris[4];
-                tris[i * 6 + 5] = i * 4 + quardrangleMeshData.tris[5];
+                tris[i * 6 + 0] = i * 4 + 0;
+                tris[i * 6 + 1] = i * 4 + 1;
+                tris[i * 6 + 2] = i * 4 + 2;
+                tris[i * 6 + 3] = i * 4 + 3;
+                tris[i * 6 + 4] = i * 4 + 1;
+                tris[i * 6 + 5] = i * 4 + 0;
             }
 
             mesh.vertices = vecs;
@@ -214,16 +195,6 @@ namespace CustomRP.GPUPipeline
             meshFilter.sharedMesh = mesh;
         }
 
-        //四边形Mesh生成
-        private static void AddMeshTemp(GameObject game, Quardrangle quardrangles, GPUPipelineSaveStruct clustSaveStruct)
-        {
-            Mesh mesh = quardrangles.GetMesh(clustSaveStruct);
-
-            MeshFilter meshFilter = game.AddComponent<MeshFilter>();
-
-            meshFilter.sharedMesh = mesh;
-        }
-
         public static void ClipOneGameObject(GameObject game)
         {
             if (game == null) return;
@@ -233,8 +204,7 @@ namespace CustomRP.GPUPipeline
 
             GPUPipelineSaveStruct clustSaveStruct = new GPUPipelineSaveStruct();    //用来存储顶点数据
 
-            List<Triangle> triangles = GetAllTriangles(mesh, clustSaveStruct);
-
+            List<TriangleEdit> triangles = GetAllTriangles(mesh, clustSaveStruct);
             List<Quardrangle> intersectQuard = GetAllQuard(triangles);
 
             ClipQuardrangleMeshByClust(intersectQuard, game, clustSaveStruct);
@@ -258,8 +228,8 @@ namespace CustomRP.GPUPipeline
                         continue;
                     }
                     ClipOneGameObject(games);
-                    FileFuctions.WriteFile(Application.streamingAssetsPath + 
-                        "/ClustLog.txt", gamess[i].name + " : " + games.name);
+                    //FileFuctions.WriteFile(Application.streamingAssetsPath + 
+                    //    "/ClustLog.txt", gamess[i].name + " : " + games.name);
                 }
             }
 
@@ -284,50 +254,27 @@ namespace CustomRP.GPUPipeline
                 if (allObjs == null || allObjs.Length == 0) break;
 
                 FileFuctions.WriteFile(path, "");
+                int size = 0;
 
                 foreach (GameObject games in allObjs)
                 {
                     if (games == null || !games.activeSelf)
                         continue;
 
-                    FileFuctions.AppandWriteFile(path, clustBase.ReadyData(games, clustBase));
-                    FileFuctions.WriteFile(Application.streamingAssetsPath + "/ClustLog.txt", gameObjects[i].name + " : " + games.name);
+                    int tem;
+                    FileFuctions.AppandWriteFile(path, clustBase.ReadyData(games, clustBase, out tem));
+                    size+=tem;
+                    //FileFuctions.WriteFile(Application.streamingAssetsPath + "/ClustLog.txt", gameObjects[i].name + " : " + games.name);
+                }
+                ClustBase clust = clustBase as ClustBase;
+                if(clust != null)
+                {
+                    clust.allClusterCount = size;
                 }
             }
             Debug.Log("Save Complete");
         }
 
-
-
-        //[MenuItem("ClustObject/Create Mesh")]
-        //public static void CreateMeshTex()
-        //{
-        //    GameObject[] gameObjects = GameObject.FindGameObjectsWithTag("Clust");
-        //    if (gameObjects == null || gameObjects.Length == 0) return;
-        //    for (int i = 0; i < gameObjects.Length; i++)
-        //    {
-        //        //ClustControl clustControl = gameObjects[i].GetComponent<ClustControl>();
-        //        GPUPipelineBase clustBase = gameObjects[i].GetComponent<GPUPipelineBase>();
-        //        Mesh createMesh = clustBase.createMesh;
-        //        if (createMesh == null) continue;
-        //        GameObject createFather = new GameObject("ClustFather");
-        //        createFather.tag = "Clust";
-        //        GPUPipelineBase fatherClust = createFather.AddComponent<GPUPipelineBase>();
-        //        fatherClust.controlObjects = new GameObject[10000];
-        //        for (int j = 0; j < 100; j++)
-        //        {
-        //            for (int k = 0; k < 100; k++)
-        //            {
-        //                GameObject go = new GameObject((j * 100 + k).ToString());
-        //                go.AddComponent<MeshFilter>().mesh = createMesh;
-        //                go.transform.position = new Vector3(j, 0, k);
-        //                fatherClust.controlObjects[j * 100 + k] = go;
-        //                go.transform.parent = createFather.transform;
-        //            }
-
-        //        }
-        //    }
-        //}
 
         [MenuItem("ClustObject/Remove Null Control")]
         public static void RemoveNullControl()

@@ -17,7 +17,7 @@ namespace CustomRP.GPUPipeline
         /// </summary>
         public virtual string GetSavePath()
         {
-            return Application.streamingAssetsPath + "/" + saveName;
+            return null;
         }
         public GameObject[] controlObjects;
 
@@ -34,7 +34,8 @@ namespace CustomRP.GPUPipeline
             CommandBuffer buffer, ClustDrawType drawType, Matrix4x4 projectMatrix);
 
         /// <summary>
-        /// 负责保存的函数，如果需要修改保存数据，可以重写该函数
+        /// 负责保存的函数，如果需要修改保存数据，可以重写该函数,
+        /// 存储顺序：顶点、边框、法线、切线、uv
         /// </summary>
         /// <param name="mesh">保存的根据Mesh</param>
         /// <param name="transform">对应的模型的transform</param>
@@ -42,8 +43,10 @@ namespace CustomRP.GPUPipeline
         {
             Vector3 boundMax = new Vector3(float.MinValue, float.MinValue, float.MinValue);
             Vector3 boundMin = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
-            StringBuilder context = new StringBuilder("vertices=");
-            for (int i = 0; i < mesh.vertices.Length; i++)
+            //StringBuilder context = new StringBuilder("vertices=");
+            StringBuilder context = new StringBuilder("");
+            //Vertices
+            for (int i = 0; i < 48; i++)
             {
                 Vector3 temp = transform.TransformPoint(mesh.vertices[i]);
                 boundMax = GetBounds(boundMax, temp, true);
@@ -52,20 +55,22 @@ namespace CustomRP.GPUPipeline
             }
             context.Append("\n");
 
-            context.Append("triangles=");
-            for (int i = 0; i < mesh.triangles.Length; i++)
-            {
-                context.Append(mesh.triangles[i].ToString() + "|");
-            }
-            context.Append("\n");
+            //context.Append("triangles=");
+            //
+            //for (int i = 0; i < mesh.triangles.Length; i++)
+            //{
+            //    context.Append(mesh.triangles[i].ToString() + "|");
+            //}
+            //context.Append("\n");
 
-            context.Append("bounds=");
+            //context.Append("bounds=");
+            //Bounds
             context.Append(Vertex3ToString(boundMin) + "|");
             context.Append(Vertex3ToString(boundMax) + "|");
             context.Append("\n");
 
-            context.Append("normals=");
-
+            //context.Append("normals=");
+            //Normals
             for (int i = 0; i < mesh.normals.Length; i++)
             {
                 Vector3 temp = transform.TransformDirection(mesh.normals[i]);
@@ -73,7 +78,8 @@ namespace CustomRP.GPUPipeline
             }
             context.Append("\n");
 
-            context.Append("tanges=");
+            //context.Append("tanges=");
+            //Tangents
             for (int i = 0; i < mesh.tangents.Length; i++)
             {
                 Vector4 temp = mesh.tangents[i];
@@ -83,7 +89,8 @@ namespace CustomRP.GPUPipeline
             }
             context.Append("\n");
 
-            context.Append("uv0s=");
+            //context.Append("uv0s=");
+            //UV0s
             for (int i = 0; i < mesh.uv.Length; i++)
             {
                 Vector2 temp = mesh.uv[i];
@@ -102,10 +109,11 @@ namespace CustomRP.GPUPipeline
         /// <param name="game">被管理的一个物体，其中可能有很多个cluster块</param>
         /// <param name="clustBase">父对象的ClustBase组件</param>
         /// <returns>这个对象生成的所有Clust块文本</returns>
-        public virtual string ReadyData(GameObject game, GPUPipelineBase clustBase)
+        public virtual string ReadyData(GameObject game, GPUPipelineBase clustBase, out int size)
         {
             Transform transform = game.transform;
             StringBuilder context = new StringBuilder("");
+            int count = 0;
             for (int i = 0; i < transform.childCount; i++)
             {
                 context.Append("<");
@@ -120,7 +128,9 @@ namespace CustomRP.GPUPipeline
                 context.Append(clustBase.ReadyMeshData(mesh, child.transform));
 
                 context.Append(">\n");
+                count++;
             }
+            size = count;
             return context.ToString();
         }
 

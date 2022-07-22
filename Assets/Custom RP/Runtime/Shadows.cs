@@ -155,7 +155,6 @@ public class Shadows {
 		if (light.shadows == LightShadows.None || light.shadowStrength <= 0f) {
 			return new Vector4(0f, 0f, 0f, -1f);
 		}
-
 		float maskChannel = -1f;
 		LightBakingOutput lightBaking = light.bakingOutput;
 		if (
@@ -299,7 +298,8 @@ public class Shadows {
 			buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
 			buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
 
-			GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Shadow, projectionMatrix * viewMatrix);
+			GPUPipelineDrawStack.Instance.DrawClustData(context, 
+				buffer, ClustDrawType.Shadow, projectionMatrix * viewMatrix, true);
 
 			ExecuteBuffer();
 			context.DrawShadows(ref shadowSettings);
@@ -384,7 +384,9 @@ public class Shadows {
 		buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
 		buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
 
-		GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Shadow, projectionMatrix * viewMatrix);
+		//一般阴影不需要透明，因此只绘制非透明先
+		GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, 
+			ClustDrawType.Shadow, projectionMatrix * viewMatrix, true);
 
 		ExecuteBuffer();
 		context.DrawShadows(ref shadowSettings);
@@ -424,7 +426,8 @@ public class Shadows {
 			buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
 			buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
 
-			GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Shadow, projectionMatrix * viewMatrix);
+			GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, 
+				ClustDrawType.Shadow, projectionMatrix * viewMatrix, true);
 
 			ExecuteBuffer();
 			context.DrawShadows(ref shadowSettings);

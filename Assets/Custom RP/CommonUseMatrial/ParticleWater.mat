@@ -75,7 +75,7 @@ Material:
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 3
-    - _TessDegree: 10
+    - _TessDegree: 3
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:

@@ -1,8 +1,7 @@
 #pragma kernel ParticleReady
 
-struct ParticleGroupData {
+struct ParticleOrigenData {
     float3 beginPos;
-    float lifeTime;
 };
 struct ParticleData {
     float4 random;          //xyz是随机数，w是存活时间
@@ -19,13 +18,14 @@ struct AnimateUVData {
 };
 
 RWStructuredBuffer<ParticleData> _ParticleBuffer;         //输入的buffer
-StructuredBuffer<ParticleGroupData> _ParticleGroupBuffer;       //每组统一的数据
+StructuredBuffer<ParticleOrigenData> _ParticleOrigenBuffer;       //每组统一的数据
 
 int _GroupData;     //粒子数组数据
 int _ArriveIndex;   //到达编号
 float3 _SpeedStart;
 float3 _SpeedEnd;
 float4 _Time;       //x=time, y=deltaTime
+float _LifeTime;
 
 int2 _UVCount;				//x是row，y是column
 
@@ -107,7 +107,7 @@ void ParticleReady(int3 gid : SV_GroupID, int index : SV_GroupIndex)
     if (groupIndex >= _GroupData ) return;
 
     ParticleData o = _ParticleBuffer[allIndex];
-    ParticleGroupData group = _ParticleGroupBuffer[gid.x];
+    ParticleOrigenData origen = _ParticleOrigenBuffer[gid.x];
 
     //未到运行状态就标记死亡
     if (o.index.x > _ArriveIndex) {
@@ -117,7 +117,7 @@ void ParticleReady(int3 gid : SV_GroupID, int index : SV_GroupIndex)
     }
     //到达运行时初始化，注意，第一轮初始化是在CPU中赋值的
     if (o.index.x == _ArriveIndex) {
-        o.worldPos = group.beginPos;
+        o.worldPos = origen.beginPos;
         o.random.w = 0;
     }
 
@@ -126,7 +126,7 @@ void ParticleReady(int3 gid : SV_GroupID, int index : SV_GroupIndex)
     o.random.w += _Time.y;
 
     //超过运行时间，就让其死亡
-    if (o.random.w > group.lifeTime) {
+    if (o.random.w > _LifeTime) {
         o.index = int2(o.index.x + _GroupData, -1);
         _ParticleBuffer[allIndex] = o;    //表示不显示
         return;
@@ -135,7 +135,68 @@ void ParticleReady(int3 gid : SV_GroupID, int index : SV_GroupIndex)
         o.index.y = 1;  //运行
 
 
-    float time_01 = o.random.w / group.lifeTime;
+    float time_01 = o.random.w / _LifeTime;
+    AnimateUVData uvData = AnimateUV(time_01);
+    o.uvTransData = uvData.uvData;
+    o.interpolation = uvData.interpolation;
+    o.color = float4(LoadColor(time_01), LoadAlpha(time_01));
+    o.size = LoadSize(time_01);
+
+    _ParticleBuffer[allIndex] = o;
+}
+
+
+//---------------------Particle Group-------------
+#pragma kernel ParticleGroupReady
+
+struct ParticlePerObject        //当个物体的数据
+{
+    float3 beginPos;
+    int arriveIndex;
+};
+
+StructuredBuffer<ParticlePerObject> _ParticleGroupBuffer;       //每组统一的数据
+
+[numthreads(64, 1, 1)]
+void ParticleGroupReady(int3 gid : SV_GroupID, int index : SV_GroupIndex)
+{
+    //组内编号
+    int groupIndex = gid.y * 64 + index;
+    //总编号
+    int allIndex = gid.x * _GroupData + groupIndex;
+    if (groupIndex >= _GroupData) return;
+
+    ParticleData o = _ParticleBuffer[allIndex];
+    ParticlePerObject origen = _ParticleGroupBuffer[gid.x];
+
+    //未到运行状态就标记死亡
+    if (o.index.x >= origen.arriveIndex) {
+        o.index.y = -1;
+        _ParticleBuffer[allIndex] = o;    //表示不显示
+        return;
+    }
+    //到达运行时初始化，注意，第一轮初始化是在CPU中赋值的
+    //if (o.index.x == _ArriveIndex) {
+    if (o.index.x == 1000) {
+        o.worldPos = origen.beginPos;
+        o.random.w = 0;
+    }
+
+    float3 dir = lerp(_SpeedStart.xyz, _SpeedEnd.xyz, o.random.xyz);
+    o.worldPos += dir * _Time.y;
+    o.random.w += _Time.y;
+
+    //超过运行时间，就让其死亡
+    if (o.random.w > _LifeTime) {
+        o.index = int2(o.index.x + _GroupData, -1);
+        _ParticleBuffer[allIndex] = o;    //表示不显示
+        return;
+    }
+    else
+        o.index.y = 1;  //运行
+
+
+    float time_01 = o.random.w / _LifeTime;
     AnimateUVData uvData = AnimateUV(time_01);
     o.uvTransData = uvData.uvData;
     o.interpolation = uvData.interpolation;

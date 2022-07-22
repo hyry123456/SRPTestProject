@@ -65,7 +65,9 @@ Shader "ClustDraw/ClustDrawSimple"
 			#pragma multi_compile _ _OTHER_PCF3 _OTHER_PCF5 _OTHER_PCF7
 			#pragma multi_compile _ _CASCADE_BLEND_SOFT _CASCADE_BLEND_DITHER
 			#pragma multi_compile _ _SHADOW_MASK_ALWAYS _SHADOW_MASK_DISTANCE
+
 			#pragma vertex ClustBRDFVertex
+			#pragma geometry ClustBRDFPassGemo
 			#pragma fragment ClustBRDFFragment
 			#include "HLSL/ClustBRDFPass.hlsl"
 			ENDHLSL
@@ -80,7 +82,9 @@ Shader "ClustDraw/ClustDrawSimple"
             HLSLPROGRAM
 			#pragma target 4.5
 			#pragma shader_feature _ _SHADOWS_CLIP _SHADOWS_DITHER
+
 			#pragma vertex ClustShadowPassVertex
+			#pragma geometry ClustShadowPassGemo
 			#pragma fragment ClustShadowPassFragment
 
             #include "HLSL/ClustShadowPass.hlsl"
@@ -110,6 +114,7 @@ Shader "ClustDraw/ClustDrawSimple"
 			#pragma multi_compile _ _OTHER_PCF3 _OTHER_PCF5 _OTHER_PCF7
 			#pragma multi_compile _ _CASCADE_BLEND_SOFT _CASCADE_BLEND_DITHER
 			#pragma multi_compile _ _SHADOW_MASK_ALWAYS _SHADOW_MASK_DISTANCE
+
 			#pragma vertex ClustBRDFVertex
 			#pragma fragment ClustBRDFFragment
 			#include "HLSL/ClustBRDF_LC_Pass.hlsl"

@@ -24,52 +24,58 @@ struct Varyings {
 	#endif
 };
 
-Varyings ClustBRDFVertex(uint id : SV_VertexID, 
-    uint instanceID : SV_InstanceID)
+void ClustBRDFVertex(inout uint instanceID : SV_InstanceID)
 {
-    Varyings o = (Varyings)0;
-    //获得该实例的对应三角形数据
-    Triangle tri = cullresult[instanceID];
-    if (id == 0) {
-        o.positionWS = tri.point0;
-        o.positionCS_SS = TransformWorldToHClip(o.positionWS);
-        o.baseUV = TransformBaseUV(tri.uv0_0);
-        o.normalWS = tri.normal0;
 
-	    #if defined(_NORMAL_MAP)
-            o.tangentWS = tri.tangen0;
-        #endif
-        #if defined(_DETAIL_MAP)
-            o.detailUV = TransformDetailUV(tri.uv0_0);
-        #endif
-    }
-    if (id == 1) {
-        o.positionWS = tri.point1;
-        o.positionCS_SS = TransformWorldToHClip(o.positionWS);
-        o.baseUV = TransformBaseUV(tri.uv0_1);
-        o.normalWS = tri.normal1;
+}
 
-	    #if defined(_NORMAL_MAP)
-            o.tangentWS = tri.tangen1;
-        #endif
-        #if defined(_DETAIL_MAP)
-            o.detailUV = TransformDetailUV(tri.uv0_1);
-        #endif
-    }
-    if (id == 2) {
-        o.positionWS = tri.point2;
-        o.positionCS_SS = TransformWorldToHClip(o.positionWS);
-        o.baseUV = TransformBaseUV(tri.uv0_2);
-        o.normalWS = tri.normal2;
+[maxvertexcount(6)]
+void ClustBRDFPassGemo(point uint instanceID[1] : SV_InstanceID, inout TriangleStream<Varyings> tristream)
+{
+	Varyings o[4] = (Varyings[4])0;
+	Quards quard = _CullResult[instanceID[0]];
+	o[0].positionWS = quard.position0;
+	o[1].positionWS = quard.position1;
+	o[2].positionWS = quard.position2;
+	o[3].positionWS = quard.position3;
 
-	    #if defined(_NORMAL_MAP)
-            o.tangentWS = tri.tangen2;
-        #endif
-        #if defined(_DETAIL_MAP)
-            o.detailUV = TransformDetailUV(tri.uv0_2);
-        #endif
-    }
-    return o;
+	o[0].normalWS = quard.normal0;
+	o[1].normalWS = quard.normal1;
+	o[2].normalWS = quard.normal2;
+	o[3].normalWS = quard.normal3;
+
+	o[0].baseUV = TransformBaseUV(quard.uv0_0);
+	o[1].baseUV = TransformBaseUV(quard.uv0_1);
+	o[2].baseUV = TransformBaseUV(quard.uv0_2);
+	o[3].baseUV = TransformBaseUV(quard.uv0_3);
+
+	o[0].positionCS_SS = TransformWorldToHClip(o[0].positionWS);
+	o[1].positionCS_SS = TransformWorldToHClip(o[1].positionWS);
+	o[2].positionCS_SS = TransformWorldToHClip(o[2].positionWS);
+	o[3].positionCS_SS = TransformWorldToHClip(o[3].positionWS);
+
+	#if defined(_NORMAL_MAP)
+		o[0].tangentWS = quard.tangent0;
+		o[1].tangentWS = quard.tangent1;
+		o[2].tangentWS = quard.tangent2;
+		o[3].tangentWS = quard.tangent3;
+	#endif
+	#if defined(_DETAIL_MAP)
+		o[0].detailUV = TransformDetailUV(quard.uv0_0);
+		o[1].detailUV = TransformDetailUV(quard.uv0_1);
+		o[2].detailUV = TransformDetailUV(quard.uv0_2);
+		o[3].detailUV = TransformDetailUV(quard.uv0_3);
+	#endif
+
+	tristream.Append(o[0]);
+	tristream.Append(o[1]);
+	tristream.Append(o[2]);
+	tristream.RestartStrip();
+	tristream.Append(o[3]);
+	tristream.Append(o[1]);
+	tristream.Append(o[0]);
+	tristream.RestartStrip();
+
 }
 
 

@@ -16,10 +16,9 @@ namespace CustomRP.GPUPipeline
         public Vector4 color;
         public float size;
     }
-    struct ParticleGroupData
+    struct ParticleOrigenData
     {
         public Vector3 beginPos;
-        public float lifeTime;
     };
 
     public class ParticleSimple : GPUPipelineBase
@@ -31,7 +30,7 @@ namespace CustomRP.GPUPipeline
         int childCount = 0;
 
         int particleBufferId = Shader.PropertyToID("_ParticleBuffer"),
-            particleGroupBufferId = Shader.PropertyToID("_ParticleGroupBuffer"),
+            particleGroupBufferId = Shader.PropertyToID("_ParticleOrigenBuffer"),
             groupDataId = Shader.PropertyToID("_GroupData"),
             arriveIndexId = Shader.PropertyToID("_ArriveIndex"),
             speedStartId = Shader.PropertyToID("_SpeedStart"),
@@ -40,6 +39,7 @@ namespace CustomRP.GPUPipeline
             rowCountId = Shader.PropertyToID("_RowCount"),
             colCountId = Shader.PropertyToID("_ColCount"),
             timeId = Shader.PropertyToID("_Time"),
+            lifeTimeId = Shader.PropertyToID("_LifeTime"),
             colorsId = Shader.PropertyToID("_Colors"),
             alphasId = Shader.PropertyToID("_Alphas"),
             sizesId = Shader.PropertyToID("_Sizes");
@@ -70,18 +70,17 @@ namespace CustomRP.GPUPipeline
         }
 
 
-        private void Awake()
+        protected virtual void Awake()
         {
             if (computeShader == null || material == null) return;
             kernelId = computeShader.FindKernel("ParticleReady");
-
-
         }
 
-        private void LoadAllPostion()
+        protected virtual void LoadAllPostion()
         {
             string str = FileFuctions.LoadAllStr(GetSavePath());
             List<string> strs = FileFuctions.ClipByAngleBrackets(str);
+            if (strs == null) return;
             beginPoss = new List<Vector3>(strs.Count);
             foreach(string index in strs)
             {
@@ -92,24 +91,18 @@ namespace CustomRP.GPUPipeline
             childCount = beginPoss.Count;
         }
 
-        private void OnEnable()
+        protected virtual void OnEnable()
         {
             ReadyBuffer();
-            GPUPipelineDrawStack.Instance.InsertRender(this);
+            if(material.renderQueue >= 3000)
+                GPUPipelineDrawStack.Instance.InsertRender(this, true);
+            else
+                GPUPipelineDrawStack.Instance.InsertRender(this, false);
             isInsert = true;
             SetUnUpdateData();
         }
 
-        private void OnValidate()
-        {
-            //if (isActiveAndEnabled)
-            //{
-            //    ReadyBuffer();
-            //    SetUnUpdateData();
-            //}
-        }
-
-        private void ReadyBuffer()
+        protected virtual void ReadyBuffer()
         {
             particleBuffer?.Dispose();
             origenBuffer?.Dispose();
@@ -155,25 +148,26 @@ namespace CustomRP.GPUPipeline
             particleBuffer.SetData(particleDatas);
 
             //准备每组的根据数据
-            origenBuffer = new ComputeBuffer(childCount, sizeof(float) * (3 + 1));
-            List<ParticleGroupData> particleGroupDatas = new List<ParticleGroupData>(childCount);
+            origenBuffer = new ComputeBuffer(childCount, sizeof(float) * (3));
+            List<ParticleOrigenData> particleGroupDatas = new List<ParticleOrigenData>(childCount);
             for (int i = 0; i < childCount; i++)
             {
                 if (isStatic)
-                    particleGroupDatas.Add(new ParticleGroupData
+                    particleGroupDatas.Add(new ParticleOrigenData
                     {
                         beginPos = beginPoss[i],
-                        lifeTime = this.liveTime
                     });
                 else
-                    particleGroupDatas.Add(new ParticleGroupData
+                    particleGroupDatas.Add(new ParticleOrigenData
                     {
                         beginPos = transform.GetChild(i).position,
-                        lifeTime = this.liveTime
                     });
 
             }
             origenBuffer.SetData(particleGroupDatas);
+
+            beginPoss.Clear();
+            beginPoss = null;
         }
 
         private void Update()
@@ -195,7 +189,10 @@ namespace CustomRP.GPUPipeline
         {
             if (isInsert)
             {
-                GPUPipelineDrawStack.Instance.RemoveRender(this);
+                if (material.renderQueue >= 3000)
+                    GPUPipelineDrawStack.Instance.RemoveRender(this, true);
+                else
+                    GPUPipelineDrawStack.Instance.RemoveRender(this, false);
                 isInsert = false;
             }
             particleBuffer?.Dispose();
@@ -235,6 +232,8 @@ namespace CustomRP.GPUPipeline
                 colors[i].w = gradientColorKeys[i].time;
             }
             computeShader.SetVectorArray(colorsId, colors);
+
+            computeShader.SetFloat(lifeTimeId, liveTime);
         }
 
         /// <summary>        /// 设置时时帧数据        /// </summary>
@@ -281,12 +280,13 @@ namespace CustomRP.GPUPipeline
             return Application.streamingAssetsPath + "/Particle/" + saveName;
         }
 
-        public override string ReadyData(GameObject game, GPUPipelineBase clustBase)
+        public override string ReadyData(GameObject game, GPUPipelineBase clustBase, out int size)
         {
             StringBuilder context = new StringBuilder("");
             context.Append("<");
             context.Append(Vertex3ToString(game.transform.position));
             context.Append(">");
+            size = 0;
             return context.ToString();
         }
     }

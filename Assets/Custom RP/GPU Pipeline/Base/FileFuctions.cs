@@ -49,6 +49,7 @@ public static class FileFuctions
     public static List<string> ClipByAngleBrackets(string allStr)
     {
         List<string> list = new List<string>();
+        if (allStr == null) return null;
         for (int i = allStr.IndexOf('<'); i < allStr.Length && i != -1;)
         {
             //获得这个的所有数据

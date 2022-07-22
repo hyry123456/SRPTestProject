@@ -157,7 +157,6 @@ public partial class CameraRenderer {
 			cameraSettings.renderingLayerMask
 		);
 
-		GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, ClustDrawType.Simple, camera);
 
 		DrawUnsupportedShaders();   //绘制不支持的纹理
 
@@ -345,6 +344,10 @@ public partial class CameraRenderer {
 			cullingResults, ref drawingSettings, ref filteringSettings
 		);
 
+		//绘制非透明物体
+		GPUPipelineDrawStack.Instance.DrawClustData(context, buffer, 
+			ClustDrawType.Simple, camera, true);
+
 		//绘制天空盒
 		context.DrawSkybox(camera);
 		if (useColorTexture || useDepthTexture) {
@@ -361,6 +364,8 @@ public partial class CameraRenderer {
 		context.DrawRenderers(
 			cullingResults, ref drawingSettings, ref filteringSettings
 		);
+		GPUPipelineDrawStack.Instance.DrawClustData(context, buffer,
+			ClustDrawType.Simple, camera, false);
 	}
 
 	/// <summary>

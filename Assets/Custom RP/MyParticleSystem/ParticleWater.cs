@@ -77,8 +77,8 @@ namespace Common.ParticleSystem
                 meshFilter = gameObject.AddComponent<MeshFilter>();
             else
             {
-                meshFilter.sharedMesh.Clear();
-                meshFilter.sharedMesh = null;
+                meshFilter.mesh.Clear();
+                meshFilter.mesh = null;
             }
 
             meshRenderer = GetComponent<MeshRenderer>();
@@ -92,7 +92,6 @@ namespace Common.ParticleSystem
             AddMesh();
             SetMatValue();
         }
-
         private void OnValidate()
         {
             SetMatValue();
@@ -165,9 +164,15 @@ namespace Common.ParticleSystem
 
         private void Update()
         {
+            //RunWater();
+        }
+
+        /// <summary>       /// 运行液体喷射的方法，返回被射中的物体        /// </summary>
+        public GameObject RunWater()
+        {
             circulatePos %= particleSize;
             if (meshFilter.sharedMesh.tangents[circulatePos].w > Time.time)
-                return;
+                return null;
 
             RaycastHit raycastHit;
 
@@ -175,7 +180,6 @@ namespace Common.ParticleSystem
             Vector3 upPos = transform.position;
             Vector3 veTemp = Vector3.zero;
             float upTime = 0;
-
 
             //向上时执行上抛，否则直接向下确定位置
             if (transform.forward.y >= 0)
@@ -192,10 +196,10 @@ namespace Common.ParticleSystem
                 {
                     OneRayHit(raycastHit, raycastHit.distance, upTime);
                     Debug.DrawLine(transform.position, raycastHit.point, Color.red);
-                    return;
+                    return raycastHit.collider.gameObject;
                 }
             }
-            if(prePosition != transform.position)
+            if (prePosition != transform.position)
             {
                 //默认底部高度
                 buttonY = transform.position.y - 1;
@@ -222,15 +226,14 @@ namespace Common.ParticleSystem
                 TwoRayHit(raycastHit, upPos, veTemp.magnitude, transform.forward, downTime + upTime);
                 Debug.DrawLine(upPos, raycastHit.point, Color.black);
 
-                return;
+                return raycastHit.collider.gameObject;
             }
 
             //第二条也没有中,就在空中结束吧
             raycastHit.point = downPos;
             raycastHit.normal = Vector3.up;
             TwoRayHit(raycastHit, upPos, veTemp.magnitude, transform.forward, downTime + upTime);
-
-            //Debug.DrawLine(upPos, raycastHit.point, Color.white);
+            return null;
         }
 
 
