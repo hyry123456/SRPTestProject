@@ -36,6 +36,8 @@ CBUFFER_START(UnityPerMaterial)
 
 CBUFFER_END
 
+
+
 //CS传入的结构体
 struct ParticleData {
     float4 random;          //随机方向以及时间
@@ -47,10 +49,25 @@ struct ParticleData {
     float size;             //当前粒子大小
 };
 
+struct NoiseParticleData {
+    float4 random;          //xyz是随机数，w是目前存活时间
+    int2 index;             //状态标记，x是当前编号，y是是否存活
+    float3 worldPos;        //当前位置
+    float4 uvTransData;     //uv动画需要的数据
+    float interpolation;    //插值需要的数据
+    float4 color;           //颜色值，包含透明度
+    float size;             //粒子大小
+    float3 nowSpeed;        //xyz是当前速度，w是存活时间
+    float liveTime;         //最多存活时间
+};
+
+StructuredBuffer<ParticleData> _ParticleBuffer;     //计算的根据buffer
+StructuredBuffer<NoiseParticleData> _ParticleNoiseBuffer;         //输入的buffer
+
+
 //顶点生成平面需要赋值的数据
 struct PointToQuad {
     float3 worldPos;
-    // float time;
     float4 uvTransfer;
     float uvInterplation;
     float size;
@@ -59,15 +76,12 @@ struct PointToQuad {
 
 struct FragInput
 {
-    // float time : VAR_LIVE_TIME;
     float4 color : VAR_COLOR;
     float4 pos : SV_POSITION;
     float4 uv : TEXCOORD0;
     float interpolation : UV_INTERPELATION;
-    // float temData : TEMP;
 };
 
-StructuredBuffer<ParticleData> _ParticleBuffer;     //计算的根据buffer
 
 //计算uv，包含uv动画
 float4 GetUV(float2 uv, float4 uvTransData) {
