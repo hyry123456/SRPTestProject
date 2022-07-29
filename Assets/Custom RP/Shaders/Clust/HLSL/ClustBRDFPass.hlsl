@@ -80,7 +80,7 @@ void ClustBRDFPassGemo(point uint instanceID[1] : SV_InstanceID, inout TriangleS
 
 
 //整个流程是模拟Lit的，毕竟没什么好改的
-float4 ClustBRDFFragment (Varyings input) : SV_TARGET {
+float4 ClustBRDFFragment(Varyings input) : SV_TARGET{
 	InputConfig config = GetInputConfig(input.positionCS_SS, input.baseUV);
 	#if defined(_MASK_MAP)
 		config.useMask = true;

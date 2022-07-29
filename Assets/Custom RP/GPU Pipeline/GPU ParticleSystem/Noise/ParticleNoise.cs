@@ -1,56 +1,52 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace CustomRP.GPUPipeline
 {
-    struct NoiseParticleData
-    {
-        public Vector4 random;          //xyz是随机数，w是目前存活时间
-        public Vector2Int index;             //状态标记，x是当前编号，y是是否存活
-        public Vector3 worldPos;        //当前位置
-        public Vector4 uvTransData;     //uv动画需要的数据
-        public float interpolation;    //插值需要的数据
-        public Vector4 color;           //颜色值，包含透明度
-        public float size;             //粒子大小
-        public Vector3 nowSpeed;        //xyz是当前速度，w是存活时间
-        public float liveTime;         //最多存活时间
-    }
 
     public class ParticleNoise : GPUPipelineBase
     {
         public ComputeShader computeShader;
-        public ComputeBuffer particleBuffer;
+        private ComputeBuffer particleBuffer;
+        private ComputeBuffer initializeBuffer;
+        public NoiseData[] noiseDatas;
 
-        [Range(0.01f, 6.18f)]
-        public float arc = 0;
-        [Range(1, 8)]
-        public int octave;
-        public float frequency;
-        [Range(0.0001f, 1f)]
-        public float intensity = 0.1f;
-        public int particleCount = 1000;
-        public int particleOutCount = 100;
-        public float radius = 1;
-        public int rowCount = 1;
-        public int colCount = 1;
-        public Vector2 lifeTimeRange = new Vector2(0, 1);
-        public Material material;
-        public AnimationCurve sizeCurve = AnimationCurve.Linear(0, 0, 1, 1);
+        //初始化
+        [SerializeField]
+        private int particleCount = 1000;   //每组粒子数量
+        [SerializeField]
+        private int particleOutCount = 100; //每秒输出数量
+        [SerializeField]
+        private bool runInUpdate = true;
+
+        public int ParticleOutCount
+        {
+            get { return particleOutCount; }
+        }
+
+        //输出、着色
+        [SerializeField]
+        private int rowCount = 1;
+        [SerializeField]
+        private int colCount = 1;
+        [SerializeField]
+        private Material material;
+        [SerializeField]
+        private AnimationCurve sizeCurve = AnimationCurve.Linear(0, 0, 1, 1);
+        [SerializeField]
         [GradientUsage(true)]
-        public Gradient colorWithLive;
+        private Gradient colorWithLive;
+        [SerializeField]
+        private Texture mainTexture;
 
-        private int kernel;
+        private int kernel_Updata;
+        private int kernel_FixUpdata;
         private bool isInsert;
-        public int arrive;
+        public uint arrive;
         private float arriveF = 0;
+        public ParticleInitializeData[] init;
 
-        private int arcId = Shader.PropertyToID("_Arc"),
-            radiusId = Shader.PropertyToID("_Radius"),
-            octaveId = Shader.PropertyToID("_Octave"),
-            frequencyId = Shader.PropertyToID("_Frequency"),
-            arriveIndexId = Shader.PropertyToID("_ArriveIndex"),
+        private int 
             timeId = Shader.PropertyToID("_Time"),
             uvCountId = Shader.PropertyToID("_UVCount"),
             rowCountId = Shader.PropertyToID("_RowCount"),
@@ -59,10 +55,13 @@ namespace CustomRP.GPUPipeline
             alphasId = Shader.PropertyToID("_Alphas"),
             particleCountId = Shader.PropertyToID("_ParticleCount"),
             sizesId = Shader.PropertyToID("_Sizes"),
-            intensityId = Shader.PropertyToID("_Intensity"),
-            particleBufferId = Shader.PropertyToID("_ParticleNoiseBuffer");
+            mainTexId = Shader.PropertyToID("_MainTex"), 
+            texAspectRatioId = Shader.PropertyToID("_TexAspectRatio"), 
+            particleBufferId = Shader.PropertyToID("_ParticleNoiseBuffer"),
+            initBufferId = Shader.PropertyToID("_InitializeBuffer");
 
-        Vector3 GetSphereBeginPos(Vector4 random)
+
+        Vector3 GetSphereBeginPos(Vector4 random, float arc, float radius)
         {
             float u = Mathf.Lerp(0, arc, random.x);
             float v = Mathf.Lerp(0, arc, random.y);
@@ -70,36 +69,61 @@ namespace CustomRP.GPUPipeline
                 radius * Mathf.Sin(u) * Mathf.Cos(v), radius * Mathf.Sin(u) * Mathf.Sin(v));
         }
 
+        Vector3 GetCubeBeginPos(Vector4 random, Vector3 cubeRange)
+        {
+            Vector3 beginPos = -cubeRange / 2.0f;
+            Vector3 endPos = cubeRange / 2.0f;
+            return new Vector3(
+                Mathf.Lerp(beginPos.x, endPos.x, random.x),
+                Mathf.Lerp(beginPos.y, endPos.y, random.y),
+                Mathf.Lerp(beginPos.z, endPos.z, random.z)
+                );
+        }
+
         private void Awake()
         {
             if (computeShader == null || material == null) return;
-            kernel = computeShader.FindKernel("NoiseParticle");
+            kernel_Updata = computeShader.FindKernel("Noise_PerFrame");
+            kernel_FixUpdata = computeShader.FindKernel("Noise_PerFixFrame");
         }
 
         private void OnEnable()
         {
-            ReadyBuffer();
             if (material.renderQueue >= 3000)
                 GPUPipelineDrawStack.Instance.InsertRender(this, true);
             else
                 GPUPipelineDrawStack.Instance.InsertRender(this, false);
             isInsert = true;
+
+            ReadyBuffer();
             SetUnUpdateData();
         }
 
         private void Update()
         {
-            arriveF += Time.deltaTime;
-            int add = (int)(arriveF / (1.0f / particleOutCount));
-            if(add > 0)
+            if (runInUpdate)
             {
-                arrive += add;
-                arriveF = 0;
-                arrive %= 1000000007;
+                arriveF += Time.deltaTime;
+                uint add = (uint)(arriveF / (1.0f / particleOutCount));
+                if (add > 0)
+                {
+                    arrive += add;
+                    arriveF = 0;
+                    arrive %= 1000000007;
+                }
             }
 
+
+            UpdateInitial();
+
             SetUpdateData();
-            computeShader.Dispatch(kernel, (particleCount / 64) + 1, 1, 1);
+            computeShader.Dispatch(kernel_Updata, noiseDatas.Length, (particleCount / 64) + 1, 1);
+        }
+
+        private void FixedUpdate()
+        {
+            SetFixUpdateData();
+            computeShader.Dispatch(kernel_FixUpdata, noiseDatas.Length, (particleCount / 64) + 1, 1);
         }
 
         private void OnDisable()
@@ -114,37 +138,113 @@ namespace CustomRP.GPUPipeline
             }
 
             particleBuffer?.Release();
+            initializeBuffer?.Release();
         }
 
         private void OnValidate()
         {
             if (isInsert)
             {
-                ReadyBuffer();
                 SetUnUpdateData();
+                ReadyInitialParticle();
             }
         }
 
         private void ReadyBuffer()
         {
+            ReadyPerParticle();
+            ReadyInitialParticle();
+        }
+
+        /// <summary>        /// 初始化每一个粒子的数据        /// </summary>
+        private void ReadyPerParticle()
+        {
             particleBuffer?.Release();
-            particleBuffer = new ComputeBuffer(particleCount, sizeof(float) * (4 + 2 + 3 + 4 + 1 + 4 + 1 + 3 + 1));
-            NoiseParticleData[] noiseParticleData = new NoiseParticleData[particleCount];
-            for(int i=0; i<particleCount; i++)
+            particleBuffer = new ComputeBuffer(particleCount * noiseDatas.Length, 
+                sizeof(float) * (4 + 2 + 3 + 4 + 1 + 4 + 1 + 3 + 1));
+            NoiseParticleData[] noiseParticleData = new NoiseParticleData[particleCount * noiseDatas.Length];
+            for(int j=0; j< noiseDatas.Length; j++)
             {
-                Vector4 vector4 = new Vector4(Random.value, Random.value, Random.value, 0);
-                Vector3 pos = GetSphereBeginPos(vector4);
-                noiseParticleData[i] = new NoiseParticleData
+                NoiseData noiseData = noiseDatas[j];
+                Vector3 begin = noiseDatas[j].position.position;
+                for (int i = 0; i < particleCount; i++)
                 {
-                    random = vector4,
-                    index = new Vector2Int(i, -1),
-                    worldPos = pos,
-                    liveTime = Mathf.Lerp(lifeTimeRange.x, lifeTimeRange.y, Random.value),
-                };
+                    Vector4 random = new Vector4(Random.value, Random.value, Random.value, 0);
+                    Vector3 pos = begin;
+                    switch (noiseData.shapeMode)
+                    {
+                        case InitialShapeMode.Sphere:
+                            pos += GetSphereBeginPos(random, noiseData.arc, noiseData.radius); break;
+                        case InitialShapeMode.Cube:
+                            pos += GetCubeBeginPos(random, noiseData.cubeRange); break;
+                    }
+
+                    Vector3 speed = new Vector3(
+                        Mathf.Lerp(noiseData.velocityBegin.x, noiseData.velocityEnd.x, random.y),
+                        Mathf.Lerp(noiseData.velocityBegin.y, noiseData.velocityEnd.y, random.z),
+                        Mathf.Lerp(noiseData.velocityBegin.z, noiseData.velocityEnd.z, random.x)
+                    );
+                    noiseParticleData[j * particleCount + i] = new NoiseParticleData
+                    {
+                        random = random,
+                        index = new Vector2Int(i - 100, -1),
+                        worldPos = pos,
+                        liveTime = Mathf.Lerp(noiseData.lifeTime.x, noiseData.lifeTime.y, Random.value),
+                        nowSpeed = speed,
+                    };
+                }
             }
+
             particleBuffer.SetData(noiseParticleData);
             arrive = 0;
+        }
 
+        /// <summary>        /// 加载每一组粒子的初始化数据        /// </summary>
+        private void ReadyInitialParticle()
+        {
+            initializeBuffer?.Dispose();
+            initializeBuffer = new ComputeBuffer(noiseDatas.Length, 
+                sizeof(float) * (3 + 3 + 3 + 3 + 2 + 3 + 2 + 3 + 3 + 2 + 1));
+            init = new ParticleInitializeData[noiseDatas.Length];
+            for(int i=0; i< noiseDatas.Length; i++)
+            {
+                NoiseData noiseData = noiseDatas[i];
+                Vector3Int initEnum = Vector3Int.zero;
+                initEnum.x = (int)noiseData.shapeMode;
+                Vector2 sphere = new Vector2(noiseData.arc, noiseData.radius);
+                Vector3 cube = noiseData.cubeRange;
+                Vector3 noise = 
+                    new Vector3(noiseData.octave, noiseData.frequency, noiseData.intensity);
+                Vector3Int outEnum = Vector3Int.zero;
+                outEnum.x = (noiseData.isSizeBySpeed) ? (int)noiseData.sizeBySpeedMode : 0;
+
+                init[i] = new ParticleInitializeData
+                {
+                    beginPos = noiseData.position.position,
+                    velocityBeg = noiseData.velocityBegin,
+                    velocityEnd = noiseData.velocityEnd,
+                    InitEnum = initEnum,
+                    sphereData = sphere,
+                    cubeRange = cube,
+                    lifeTimeRange = noiseData.lifeTime,
+                    noiseData = noise,
+                    outEnum = outEnum,
+                    smoothRange = noiseData.smoothRange,
+                    arriveIndex = 0,
+                };
+            }
+
+            initializeBuffer.SetData(init);
+        }
+
+        private void UpdateInitial()
+        {
+            if (initializeBuffer == null || init == null) return;
+            //for(int i=0; i<init.Length; i++)
+            //{
+            //    init[i].arriveIndex = arrive;
+            //}
+            initializeBuffer.SetData(init);
         }
 
         private void SetUnUpdateData()
@@ -178,30 +278,48 @@ namespace CustomRP.GPUPipeline
             }
             computeShader.SetVectorArray(colorsId, colors);
 
-            computeShader.SetFloat(arcId, arc);
-            computeShader.SetFloat(radiusId, radius);
-            computeShader.SetInt(octaveId, octave);
-            computeShader.SetFloat(frequencyId, frequency);
-            computeShader.SetFloat(intensityId, intensity);
+            material.SetTexture(mainTexId, mainTexture);
+            material.SetInt(rowCountId, rowCount);
+            material.SetInt(colCountId, colCount);
+            float ratio = (mainTexture == null)? 1 : (float)mainTexture.width / mainTexture.height;
+            material.SetFloat(texAspectRatioId, ratio);
         }
 
         private void SetUpdateData()
         {
-            computeShader.SetBuffer(kernel, particleBufferId, particleBuffer);
+            computeShader.SetBuffer(kernel_Updata, particleBufferId, particleBuffer);
+            computeShader.SetBuffer(kernel_Updata, initBufferId, initializeBuffer);
 
             //设置时间
-            computeShader.SetVector(timeId, new Vector4(Time.time, Time.deltaTime));
+            computeShader.SetVector(timeId, new Vector4(Time.time, Time.deltaTime, Time.fixedDeltaTime));
             //设置枚举位置
-            computeShader.SetInt(arriveIndexId, arrive);
+            //computeShader.SetInt(arriveIndexId, (int)arrive);
+
+            if (runInUpdate)
+            {
+                for (int i = 0; i < init.Length; i++)
+                {
+                    init[i].arriveIndex = arrive;
+                }
+                initializeBuffer.SetData(init);
+            }
+        }
+
+        private void SetFixUpdateData()
+        {
+            computeShader.SetBuffer(kernel_FixUpdata, particleBufferId, particleBuffer);
+            computeShader.SetBuffer(kernel_FixUpdata, initBufferId, initializeBuffer);
+
+            //设置时间
+            computeShader.SetVector(timeId, new Vector4(Time.time, Time.deltaTime, Time.fixedDeltaTime));
         }
 
         public override void DrawClustByCamera(ScriptableRenderContext context, CommandBuffer buffer, ClustDrawType drawType, Camera camera)
         {
             material.SetBuffer(particleBufferId, particleBuffer);
-            material.SetInt(rowCountId, rowCount);
-            material.SetInt(colCountId, colCount);
+
             buffer.DrawProcedural(Matrix4x4.identity, material, 0, MeshTopology.Points,
-                1, particleCount);
+                1, particleCount * noiseDatas.Length);
             ExecuteBuffer(ref buffer, context);
         }
 

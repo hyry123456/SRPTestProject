@@ -56,7 +56,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _WaterReflectCube:
-        m_Texture: {fileID: 8900000, guid: c5d7a85b0c613794184f2e56af6ef68e, type: 3}
+        m_Texture: {fileID: 8900000, guid: 263608f556aeb1040a7968c91cf2f3a3, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Floats:

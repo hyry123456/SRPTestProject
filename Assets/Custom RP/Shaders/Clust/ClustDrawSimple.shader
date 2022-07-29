@@ -67,6 +67,7 @@ Shader "ClustDraw/ClustDrawSimple"
 			#pragma multi_compile _ _SHADOW_MASK_ALWAYS _SHADOW_MASK_DISTANCE
 
 			#pragma vertex ClustBRDFVertex
+			#pragma require geometry
 			#pragma geometry ClustBRDFPassGemo
 			#pragma fragment ClustBRDFFragment
 			#include "HLSL/ClustBRDFPass.hlsl"
@@ -84,6 +85,8 @@ Shader "ClustDraw/ClustDrawSimple"
 			#pragma shader_feature _ _SHADOWS_CLIP _SHADOWS_DITHER
 
 			#pragma vertex ClustShadowPassVertex
+			#pragma require geometry
+
 			#pragma geometry ClustShadowPassGemo
 			#pragma fragment ClustShadowPassFragment
 

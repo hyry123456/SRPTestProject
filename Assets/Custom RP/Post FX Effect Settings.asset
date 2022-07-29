@@ -16,9 +16,9 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: e8f3f6183c991eb4ca7f692dba7ac9a5, type: 2}
   particleWater:
     useParticleWater: 1
-    waterColor: {r: 0, g: 0.28235295, b: 2.9960785, a: 1}
+    waterColor: {r: 0, g: 0.27328658, b: 1, a: 1}
     renderingLayerMask: 2
     bilaterFilterStrength: 0.5
-    biurRadius: 4
-    airRrfraRadio: 0.17
+    biurRadius: 3
+    airRrfraRadio: 0.46
     waterRrfraRadio: 0.46

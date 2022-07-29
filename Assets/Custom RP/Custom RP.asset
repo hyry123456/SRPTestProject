@@ -35,7 +35,7 @@ MonoBehaviour:
       cascadeFade: 0.7
       cascadeBlend: 1
     other:
-      atlasSize: 2048
+      atlasSize: 8192
       filter: 2
   postFXSettings: {fileID: 11400000, guid: 2e703c10311224205856a15ca4e1b1c0, type: 2}
   postFXEffectSettings: {fileID: 11400000, guid: 47db008c37e30124fb465f8b716c0c37, type: 2}

@@ -1,6 +1,7 @@
 
 using UnityEngine;
 using UnityEngine.Rendering;
+using CustomRP.GPUPipeline;
 
 /// <summary>
 /// 一些特效后处理，也就是不是真正的后处理，但是使用一些方式将特效混合在目前的纹理上
@@ -111,7 +112,9 @@ public class PostFXEffect
             RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
         buffer.ClearRenderTarget(true, true, Color.clear);
         ExecuteBuffer();
-        DrawVisibleGeometry(setting.particleWater.renderingLayerMask, waterWidthId);
+		//DrawVisibleGeometry(setting.particleWater.renderingLayerMask, waterWidthId);
+		DrawWidth();
+
 
         //绘制深度以及法线
         buffer.GetTemporaryRT(waterNormalMapId, camera.pixelWidth, camera.pixelHeight,
@@ -126,7 +129,8 @@ public class PostFXEffect
 		buffer.ClearRenderTarget(true, true, Color.clear);
 
 		ExecuteBuffer();
-        DrawVisibleGeometry(setting.particleWater.renderingLayerMask, waterNormalAndDepth);
+        //DrawVisibleGeometry(setting.particleWater.renderingLayerMask, waterNormalAndDepth);
+		DrawDepthAndNormal();
 
         buffer.GetTemporaryRT(temRT1, camera.pixelWidth, camera.pixelHeight,
             0, FilterMode.Bilinear, RenderTextureFormat.R16);
@@ -180,37 +184,14 @@ public class PostFXEffect
 		);
 	}
 
-	/// <summary>
-	/// 绘制所有可以看见的图元，包括可以看见的和不可以看见的
-	/// </summary>
-	/// <param name="useDynamicBatching">是否使用动态批处理</param>
-	/// <param name="useGPUInstancing">是否使用GPU实例化</param>
-	/// <param name="useLightsPerObject">是否使用逐物体光照</param>
-	/// <param name="renderingLayerMask">渲染的遮罩层，实际上没有任何效果</param>
-	void DrawVisibleGeometry(int renderingLayerMask, ShaderTagId shaderTagId)
-	{
-		//设置该摄像机的物体排序模式，目前是渲染普通物体，因此用一般排序方式
-		var sortingSettings = new SortingSettings(camera)
-		{
-			criteria = SortingCriteria.CommonOpaque
-		};
-		//设置绘制参数，对于通用物体需要全部都打开，一般来说
-		var drawingSettings = new DrawingSettings(
-			shaderTagId, sortingSettings
-		)
-		{
-            enableDynamicBatching = true
-        };
+	void DrawWidth()
+    {
+		WaterDrawStack.Instance.DrawWaterByMode(context, buffer, WaterDrawMode.Width);
+    }
 
-        //渲染一般物体
-        var filteringSettings = new FilteringSettings(
-            RenderQueueRange.opaque, renderingLayerMask: (uint)renderingLayerMask
-        );
-
-        //进行渲染的执行方法
-        context.DrawRenderers(
-			cullingResults, ref drawingSettings, ref filteringSettings
-		);
+	void DrawDepthAndNormal()
+    {
+		WaterDrawStack.Instance.DrawWaterByMode(context, buffer, WaterDrawMode.DepthAndNormal);
 	}
 
 	/// <summary>	/// 封装一个Buffer写入函数，方便调用	/// </summary>

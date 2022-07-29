@@ -56,6 +56,8 @@ namespace CustomRP.GPUPipeline
         /// </summary>
         public void ReadyBuffer(ParticlePerObject[] objects)
         {
+            if (!gameObject.activeSelf) return;
+
             particleBuffer?.Dispose();
             origenBuffer?.Dispose();
 

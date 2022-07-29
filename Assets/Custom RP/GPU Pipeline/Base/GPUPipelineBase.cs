@@ -177,7 +177,5 @@ namespace CustomRP.GPUPipeline
             return bound;
         }
 
-
-
     }
 }
